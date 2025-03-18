@@ -1,0 +1,232 @@
+Great job! 🎉 Now, let's break down the difference between deploying a server **with** and **without** an ALB:
+
+---
+
+## 🚀 **1. Deploying Just a Server (EC2 Without ALB)**
+### **How It Works:**
+- You launch an **EC2 instance** with a **public IP**.
+- Users access the server directly using the **public IP** (e.g., `http://<EC2-Public-IP>`).
+- You manage traffic, scaling, and failover manually.
+
+### **Pros ✅**
+✔️ **Simple & Cost-Effective** – No ALB costs, just pay for EC2.  
+✔️ **Direct Access** – Users can connect directly via public IP.  
+✔️ **Easier Setup** – No need for extra resources like ALB or Target Groups.  
+
+### **Cons ❌**
+❌ **No Load Balancing** – If traffic increases, EC2 may struggle.  
+❌ **Single Point of Failure** – If the instance crashes, everything goes down.  
+❌ **No Auto Scaling** – Cannot distribute traffic to multiple instances.  
+
+---
+
+## 🌐 **2. Deploying a Server with an ALB**
+### **How It Works:**
+- **Users hit the ALB DNS Name** instead of a direct EC2 IP.
+- ALB forwards traffic to one or more **EC2 instances**.
+- ALB distributes traffic **evenly** and **checks instance health**.
+
+### **Pros ✅**
+✔️ **Load Balancing** – Handles high traffic efficiently.  
+✔️ **High Availability** – If one instance fails, ALB routes to another.  
+✔️ **Auto Scaling Support** – Can dynamically add/remove EC2 instances.  
+✔️ **No Direct Public Exposure** – EC2 can be private, reducing attack risks.  
+
+### **Cons ❌**
+❌ **Extra Cost** – ALB pricing adds cost compared to a single EC2.  
+❌ **More Complex Setup** – Requires **security groups, listeners, and target groups**.  
+
+---
+
+## 📌 **When to Use What?**
+| Scenario | Use EC2 Only | Use ALB |
+|----------|-------------|---------|
+| **Small personal project** | ✅ | ❌ |
+| **Single server with low traffic** | ✅ | ❌ |
+| **Production application** | ❌ | ✅ |
+| **Scaling needed (Auto Scaling Group)** | ❌ | ✅ |
+| **High Availability / Fault Tolerance** | ❌ | ✅ |
+
+---
+
+### **TL;DR**
+- **For small projects** → Just an EC2 instance is fine.  
+- **For production / scalability** → ALB ensures reliability & performance.  
+
+Since you're into **DevOps**, you’ll likely use **ALB** most of the time! 🚀
+
+### ✅ **What We Have Achieved So Far**  
+We have successfully:  
+1. **Deployed an EC2 instance** with security groups.  
+2. **Created an Application Load Balancer (ALB)** to distribute traffic.  
+3. **Configured security groups** for both EC2 and ALB.  
+4. **Ensured proper communication** between ALB and EC2.  
+5. **Used Terraform** to automate everything.
+
+---
+
+## 📜 **Step-by-Step Instructions for ALB Deployment Using Terraform**  
+
+### **1️⃣ Create an EC2 Instance**  
+- Define an EC2 instance with `ami`, `instance_type`, and `security_group`.  
+- Use `user_data` to install & configure a web server.
+
+```hcl
+resource "aws_instance" "practice" {
+  ami             = "ami-023a307f3d27ea427"
+  instance_type   = "t2.micro"
+  security_groups = [aws_security_group.ec2_sg.name]
+  user_data       = file("user_data.sh")
+}
+```
+
+---
+
+### **2️⃣ Create a Security Group for EC2**
+- Allow traffic **only from ALB** for HTTP.
+- Allow SSH for manual access.
+
+```hcl
+resource "aws_security_group" "ec2_sg" {
+  name        = "ec2-security-group"
+  description = "Allow traffic only from ALB"
+
+  ingress {
+    from_port       = 80
+    to_port         = 80
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb_sg.id]
+  }
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+```
+
+---
+
+### **3️⃣ Create a Security Group for ALB**
+- Allow public HTTP traffic.  
+- Allow ALB to forward traffic to EC2.
+
+```hcl
+resource "aws_security_group" "alb_sg" {
+  name        = "alb-sg"
+  description = "Allow HTTP and ALB traffic"
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+```
+
+---
+
+### **4️⃣ Create an ALB**
+- Use **public subnets** in **your VPC**.  
+- Attach the **ALB security group**.
+
+```hcl
+resource "aws_lb" "practice_alb" {
+  name               = "practice-alb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.alb_sg.id]
+  subnets           = ["subnet-07245def94cd89368", "subnet-08dd375488d722612"]
+
+  enable_deletion_protection = false
+}
+```
+
+---
+
+### **5️⃣ Create a Target Group**
+- Links **ALB to EC2 instances**.
+- Uses **port 80** for HTTP traffic.
+
+```hcl
+resource "aws_lb_target_group" "tg" {
+  name     = "practice-tg"
+  port     = 80
+  protocol = "HTTP"
+  vpc_id   = "your-vpc-id"
+
+  health_check {
+    path                = "/"
+    interval            = 30
+    timeout             = 5
+    healthy_threshold   = 3
+    unhealthy_threshold = 3
+  }
+}
+```
+
+---
+
+### **6️⃣ Register the EC2 Instance with Target Group**
+- Ensures ALB forwards traffic to EC2.
+
+```hcl
+resource "aws_lb_target_group_attachment" "tg_attachment" {
+  target_group_arn = aws_lb_target_group.tg.arn
+  target_id        = aws_instance.practice.id
+  port             = 80
+}
+```
+
+---
+
+### **7️⃣ Create a Listener for ALB**
+- Routes requests from ALB to the target group.
+
+```hcl
+resource "aws_lb_listener" "http_listener" {
+  load_balancer_arn = aws_lb.practice_alb.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.tg.arn
+  }
+}
+```
+
+---
+
+## 🎯 **How to Verify Deployment**
+✅ **Check ALB Status**  
+- Run `terraform apply`.  
+- Go to AWS Console → **EC2 → Load Balancers**.  
+- Copy **ALB DNS name** and open it in a browser.
+
+✅ **Check EC2 Status**  
+- Run `terraform show` to see EC2 details.  
+- Log in via SSH:  
+  ```sh
+  ssh -i your-key.pem ubuntu@your-ec2-public-ip
+  ```
+
+---
+
