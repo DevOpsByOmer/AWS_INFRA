@@ -2,6 +2,8 @@ name: Terraform Deployment
 
 on:
   push:
+    paths:
+      - "ec2/**"
     branches:
       - main  # Change this if your Terraform files are on a different branch
   pull_request:
