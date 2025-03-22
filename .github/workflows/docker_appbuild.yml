@@ -1,0 +1,42 @@
+name: Build and Push Docker Image to ECR
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'applications/nodeapp/**'
+      - 'applications/nodeapp/Dockerfile'
+
+    
+      
+jobs:
+  push_to_ecr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        run: |
+          aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 296062587378.dkr.ecr.ap-south-1.amazonaws.com
+
+      - name: Build Docker Image
+        run: |
+          docker build -t my-app .
+          docker tag my-app:latest 296062587378.dkr.ecr.ap-south-1.amazonaws.com/my-app-repo:latest
+
+      - name: Push Docker Image to ECR
+        run: docker push 296062587378.dkr.ecr.ap-south-1.amazonaws.com/my-app-repo:latest
+
+      - name: Update ECS Service to Use New Image
+        run: |
+          aws ecs update-service --cluster my-ecs-cluster --service my-ecs-service --force-new-deployment
