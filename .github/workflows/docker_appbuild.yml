@@ -33,10 +33,10 @@ jobs:
       - name: Build Docker Image
         run: |
           docker build -t my-app -f applications/nodeapp/Dockerfile applications/nodeapp
-          docker tag my-app:latest 296062587378.dkr.ecr.ap-south-1.amazonaws.com/my-app-repo:latest
+          docker tag my-app:latest 296062587378.dkr.ecr.ap-south-1.amazonaws.com/ecs-repo:latest
 
       - name: Push Docker Image to ECR
-        run: docker push 296062587378.dkr.ecr.ap-south-1.amazonaws.com/my-app-repo:latest
+        run: docker push 296062587378.dkr.ecr.ap-south-1.amazonaws.com/ecs-repo:latest
 
       - name: Update ECS Service to Use New Image
         run: |
