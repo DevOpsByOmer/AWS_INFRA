@@ -38,6 +38,3 @@ jobs:
       - name: Push Docker Image to ECR
         run: docker push 296062587378.dkr.ecr.ap-south-1.amazonaws.com/ecs-repo:latest
 
-      - name: Update ECS Service to Use New Image
-        run: |
-          aws ecs update-service --cluster my-ecs-cluster --service my-ecs-service --force-new-deployment
