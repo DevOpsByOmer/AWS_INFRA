@@ -1,4 +1,4 @@
-name: Terraform Apply
+name: Terraform Apply & Destroy
 
 on:
   push:
@@ -7,10 +7,11 @@ on:
     paths:
       - 'ecs/**'
       - 'ecr/**'
-      
+
+  workflow_dispatch: # Allows manual triggering for destroy step
 
 jobs:
-  terraform:
+  terraform-apply:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -37,3 +38,29 @@ jobs:
       - name: Terraform Apply
         run: terraform apply -auto-approve tfplan
 
+  terraform-destroy:
+    needs: terraform-apply
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' # Run manually
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: latest
+
+      - name: Initialize Terraform
+        run: terraform init
+
+      - name: Terraform Destroy
+        run: terraform destroy -auto-approve
