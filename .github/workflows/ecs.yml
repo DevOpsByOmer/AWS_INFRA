@@ -40,7 +40,7 @@ jobs:
           terraform plan -out=tfplan
 
       - name: Terraform Apply
-        run: 
+        run: |
           cd ecs/
           terraform apply -auto-approve 
 
