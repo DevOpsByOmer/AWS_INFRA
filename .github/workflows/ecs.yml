@@ -42,7 +42,7 @@ jobs:
       - name: Terraform Apply
         run: 
           cd ecs/
-          terraform apply -auto-approve tfplan
+          terraform apply -auto-approve 
 
   terraform-destroy:
     needs: terraform-apply
@@ -66,7 +66,11 @@ jobs:
           terraform_version: latest
 
       - name: Initialize Terraform
-        run: terraform init
+        run: |
+          cd ecs/
+          terraform init
 
       - name: Terraform Destroy
-        run: terraform destroy -auto-approve
+        run: |
+          cd ecs/
+          terraform destroy -auto-approve
