@@ -1,4 +1,4 @@
-name: Terraform Destroy
+name: ECS Terraform Destroy 
 
 on:
   workflow_dispatch: # Allows manual triggering

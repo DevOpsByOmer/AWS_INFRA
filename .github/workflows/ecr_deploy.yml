@@ -1,0 +1,47 @@
+name: Deploy ECR Registry
+
+on:
+  workflow_dispatch: # Allows manual triggering
+  push:
+    branches:
+      - main
+    paths:
+      - 'ecr/**'
+
+jobs:
+  deploy-ecr:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+
+      - name: Create ECR Repository if not exists
+        run: |
+          REPO_NAME="ecs-repo"  # Change this to your desired repository name
+          AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          EXISTING_REPO=$(aws ecr describe-repositories --repository-names "$REPO_NAME" --query repositories[0].repositoryName --output text 2>/dev/null || echo "not_found")
+
+          if [ "$EXISTING_REPO" == "not_found" ]; then
+            echo "Creating ECR repository: $REPO_NAME"
+            aws ecr create-repository --repository-name "$REPO_NAME"
+          else
+            echo "ECR repository $REPO_NAME already exists."
+          fi
+
+          echo "ECR_REPO_URL=$AWS_ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/$REPO_NAME" >> $GITHUB_ENV
+
+      - name: Log in to Amazon ECR
+        run: |
+          aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin $ECR_REPO_URL
+
+      - name: Output ECR Repository URL
+        run: echo "ECR Repository URL: $ECR_REPO_URL"
+
