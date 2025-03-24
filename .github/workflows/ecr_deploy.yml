@@ -44,4 +44,4 @@ jobs:
 
       - name: Output ECR Repository URL
 
-         run: echo "ECR Repository URL: ${{ env.ECR_REPO_URL }}"
+        run: echo "ECR Repository URL: ${{ env.ECR_REPO_URL }}"
