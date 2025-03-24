@@ -43,5 +43,5 @@ jobs:
           aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin $ECR_REPO_URL
 
       - name: Output ECR Repository URL
-
-        run: echo "ECR Repository URL: ${{ env.ECR_REPO_URL }}"
+        run: |
+          echo "ECR Repository URL: ${{ env.ECR_REPO_URL }}"
